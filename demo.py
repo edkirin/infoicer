@@ -1,7 +1,11 @@
-from src.infoicer import Invoice, InvoiceItem
+from infoicer import Invoice, InvoiceItem
 
 import random
 from decimal import Decimal
+
+
+#**************************************************************************************************
+
 
 if __name__ == "__main__":
     # define some products for demo
@@ -77,3 +81,6 @@ if __name__ == "__main__":
 
     print("** Serialized invoice as json")
     print(invoice.serialize(json_output=True))
+
+
+#**************************************************************************************************
