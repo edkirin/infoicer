@@ -52,21 +52,30 @@ if __name__ == "__main__":
 
 
     def print_invoice(invoice: Invoice, item_type: str = None):
+        """Example of invoice printout"""
+
+        # let's define some formatted header
         header = f"{'Product':<30}{'Tax rate %':>12}{'Price':>12}{'Qty':>8}{'Sum':>12}"
         print(header)
+        # just a separator
         print('-' * len(header))
 
+        # enumerate all invoice items of declared type (or all) and print it out
         for item in invoice.get_all_items(item_type=item_type):
             print(f"{item.name:<30}{item.tax_rate:>12}{item.price:>12}{item.qty:>8}{item.get_sum():>12}")
 
+        # another separator
         print('-' * len(header))
 
-        amount_sum = invoice.get_sum(item_type=item_type)
+        # calculate total sum and tax sum
+        total_sum = invoice.get_sum(item_type=item_type)
         tax_sum = invoice.get_tax_sum(item_type=item_type)
 
-        print(f"{'Total sum':<30}{amount_sum:>44}")
+        # print it out
+        print(f"{'Total sum':<30}{total_sum:>44}")
         print(f"{'Total tax':<30}{tax_sum:>44}")
 
+        # now get all tax rate items grouped and print it out
         for item in invoice.group_by_tax_rate(item_type=item_type):
             print(f"{'Tax rate':<30}{item['tax_rate']:>12}{item['tax']:>32}")
 

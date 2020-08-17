@@ -137,6 +137,7 @@ class InvoiceItem:
             'qty': self.qty,
             'name': self.name,
             'price': self.price,
+            'net_price': self.net_price,
             'tax_rate': self.tax_rate,
             'sum': self.get_sum(),
             'net_sum': self.get_net_sum(),
@@ -352,7 +353,7 @@ class Invoice:
         res = {
             'items': [item.serialize() for item in items],
             'total': {
-                'sum': sum(item.get_sum() for item in items),
+                'price': sum(item.get_sum() for item in items),
                 'net': sum(item.get_net_sum() for item in items),
                 'tax': sum(item.get_tax_sum() for item in items),
             },

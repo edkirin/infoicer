@@ -5,7 +5,7 @@ Infoicer is a simple invoice items handler. It can group items by type and tax r
 
 - All price handling is utilized with `Decimal` type to avoid float rounding problems
 - Easy to group invoice items by type and tax rate
-- Already implemented object serialization
+- Implemented object serialization
 - No external dependencies
 
 ## Installation
@@ -45,9 +45,49 @@ invoice.add(InvoiceItem(
     qty=3,
     tax_rate=Decimal(5),
 ))
+
+print(invoice.serialize(json_output=True))
 ```
 
-Check included [demo.py](https://github.com/edkirin/infoicer/blob/master/demo.py).
+output:
+
+```json
+{
+   "items":[
+      {
+         "item_type":"food",
+         "qty":1,
+         "name":"Ham",
+         "price":10.0,
+         "net_price":9.52,
+         "tax_rate":5.0,
+         "sum":10.0,
+         "net_sum":9.52,
+         "tax_sum":0.48
+      },
+      {
+         "item_type":"food",
+         "qty":3,
+         "name":"Spam",
+         "price":15.0,
+         "net_price":14.29,
+         "tax_rate":5.0,
+         "sum":45.0,
+         "net_sum":42.87,
+         "tax_sum":2.13
+      }
+   ],
+   "total":{
+      "price":55.0,
+      "net":52.39,
+      "tax":2.61
+   }
+}
+```
+
+## Full demo
+
+Check included [demo.py](https://github.com/edkirin/infoicer/blob/master/demo.py) for some more uses and features.
 
 ## Licence
 
