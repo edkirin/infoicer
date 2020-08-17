@@ -33,7 +33,6 @@ class InvoiceItem:
     net_price: Decimal = None  # single product price
     price: Decimal = None  # single product price
     tax_amount: Decimal = ZERO  # single product price
-    storno: bool = False
     qty: int = 1
     obj: object = None
     decimal_places: int = 2
@@ -48,15 +47,25 @@ class InvoiceItem:
             net_price: Union[Decimal, None] = None,
             tax_rate: Union[Decimal, None] = ZERO,
             price: Union[Decimal, None] = None,
-            storno: bool = False,
             decimal_places: int = 2,
             obj: object = None,
     ):
+        """InvoiceItem object contains all relevant data for single invoice item.
+
+        :param name: Name of the item, as it will appear on invoice.
+        :param item_type: Custom defined item type or category, such as 'food', 'general' or 'discount'.
+        :param qty: Item quantity, default is 1.
+        :param net_price: Net price of the single item.
+        :param tax_rate: Tax rate for the item.
+        :param price: (Gross) price for the single item.
+        :param decimal_places: Number of decimal places which will Decimal type use. Default is 2.
+        :param obj: Arbitrary optional custom object attached to invoice item.
+        """
+
         self.name = name
         self.item_type = item_type
         self.qty = qty
         self.tax_rate = tax_rate
-        self.storno = storno
         self.decimal_places = decimal_places
         self.obj = obj
 
@@ -266,14 +275,8 @@ class Invoice:
 
     #----------------------------------------------------------------------------------------------
 
-    def get_items_count(self, item_type: str = None, calc_storno: bool = True) -> int:
-        sold_qty = storno_qty = 0
-        for item in self.get_all_items(item_type=item_type):
-            if not item.storno:
-                sold_qty += item.qty
-            else:
-                storno_qty += item.qty
-        return sold_qty - storno_qty if calc_storno else sold_qty + storno_qty
+    def get_items_count(self, item_type: str = None) -> int:
+        return sum(item.qty for item in self.get_all_items(item_type=item_type))
 
     #----------------------------------------------------------------------------------------------
 

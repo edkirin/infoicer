@@ -72,8 +72,8 @@ def print_invoice(invoice: Invoice, item_type: str = None):
 print("** Complete invoice")
 print_invoice(invoice)
 
-# print("** Invoice with food items only")
-# print_invoice(invoice, item_type='food')
-#
-# print("** Serialized invoice as json")
-# print(invoice.serialize(json_output=True))
+print("** Invoice with food items only")
+print_invoice(invoice, item_type='food')
+
+print("** Serialized invoice as json")
+print(invoice.serialize(json_output=True))
