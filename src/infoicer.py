@@ -27,6 +27,11 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 
 class InvoiceItem:
+    """InvoiceItem object contains all relevant data for single invoice item. `net_price` or
+    `price` can be set during creation of the class, or later with methods `InvoiceItem.set_net_price()`
+    and `InvoiceItem.set_price()`
+    """
+
     caption: str = None
     item_type: str = None
     tax_rate: Decimal = None
@@ -50,8 +55,7 @@ class InvoiceItem:
             decimal_places: int = 2,
             obj: object = None,
     ):
-        """InvoiceItem object contains all relevant data for single invoice item.
-
+        """
         :param name: Name of the item, as it will appear on invoice.
         :param item_type: Custom defined item type or category, such as 'food', 'general' or 'discount'.
         :param qty: Item quantity, default is 1.
@@ -77,18 +81,21 @@ class InvoiceItem:
     #----------------------------------------------------------------------------------------------
 
     def set_net_price(self, value: Decimal):
+        """Set net price and automatically calculate gross price"""
         self.net_price = quanitize(value, self.decimal_places)
         self.price, self.tax_amount = net_to_gross(value, self.tax_rate, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def set_price(self, value: Decimal):
+        """Set gross price and automatically calculate net price"""
         self.price = quanitize(value, self.decimal_places)
         self.net_price, self.tax_amount = gross_to_net(value, self.tax_rate, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def __str__(self):
+        """Stringify it for debugging purposes"""
         return "[{item_type}] {qty}x {name} {price} (tax {tax_rate}%: {net} + {tax})".format(
             item_type=self.item_type,
             qty=self.qty,
@@ -102,21 +109,29 @@ class InvoiceItem:
     #----------------------------------------------------------------------------------------------
 
     def get_net_sum(self) -> Decimal:
+        """Calculates net sum for this invoice item"""
         return quanitize(self.net_price * self.qty, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def get_sum(self) -> Decimal:
+        """Calculates gross sum for this invoice item"""
         return quanitize(self.price * self.qty, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def get_tax_sum(self) -> Decimal:
+        """Calculates tax sum for this invoice item"""
         return quanitize(self.tax_amount * self.qty, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def serialize(self, json_output: bool = False) -> Union[dict, str]:
+        """Serialize object.
+
+        :param json_output: If true, result is string in json format. Otherwise it's a dict.
+        :return: json formatted string or dict.
+        """
         res = {
             'item_type': self.item_type,
             'qty': self.qty,
@@ -151,6 +166,7 @@ class InvoiceItemContainer(list):
     #----------------------------------------------------------------------------------------------
 
     def __str__(self):
+        """Stringify it for debugging purposes"""
         res = [f"Invoice container for tax rate {self.tax_rate}"]
         res += [str(c) for c in self]
         return '\n'.join(res)
@@ -195,24 +211,29 @@ class InvoiceItemContainer(list):
 
 
 class Invoice:
+    """Main invoice class"""
     containers: List[InvoiceItemContainer] = None
     decimal_places: int = 2
 
     #----------------------------------------------------------------------------------------------
 
     def __init__(self, decimal_places: int = 2):
+        """Main invoice class.
+        :param decimal_places: Defines number of decimal places Decimal object will be using.
+        """
         self.containers = list()
         self.decimal_places = decimal_places
 
     #----------------------------------------------------------------------------------------------
 
     def __str__(self):
+        """Stringify it for debugging purposes"""
         res = [str(c) for c in self.containers]
 
         res.extend([
             '----------------',
-            f"Amount      : {self.get_amount_sum():>10}",
-            f"Net price  : {self.get_net_amount_sum():>10}",
+            f"Amount      : {self.get_sum():>10}",
+            f"Net price  : {self.get_net_sum():>10}",
             f"Tax price  : {self.get_tax_sum():>10}",
         ])
 
@@ -221,6 +242,13 @@ class Invoice:
     #----------------------------------------------------------------------------------------------
 
     def add(self, item: InvoiceItem):
+        """
+        Adds InvoiceItem object to the invoice. Item will be automatically placed in tax category
+        where it belongs. If item with same name, type and price already exists, just the
+        quantity will be increased.
+
+        :param item: Item to add
+        """
         for container in self.containers:
             if container.tax_rate == item.tax_rate:
                 existing_item = container.find_item(
@@ -243,22 +271,26 @@ class Invoice:
 
     #----------------------------------------------------------------------------------------------
 
-    def get_amount_sum(self, item_type: str = None) -> Decimal:
+    def get_sum(self, item_type: str = None) -> Decimal:
+        """Returns gross sum of all items, or items of declared type"""
         return sum([c.get_sum() for c in self.get_all_items(item_type=item_type)])
 
     #----------------------------------------------------------------------------------------------
 
-    def get_net_amount_sum(self, item_type: str = None) -> Decimal:
+    def get_net_sum(self, item_type: str = None) -> Decimal:
+        """Returns net sum of all items, or items of declared type"""
         return sum([c.get_net_sum() for c in self.get_all_items(item_type=item_type)])
 
     #----------------------------------------------------------------------------------------------
 
     def get_tax_sum(self, item_type: str = None) -> Decimal:
+        """Returns tax sum of all items, or items of declared type"""
         return sum([c.get_tax_sum() for c in self.get_all_items(item_type=item_type)])
 
     #----------------------------------------------------------------------------------------------
 
     def get_all_items(self, item_type: Union[str, List] = None) -> List[InvoiceItem]:
+        """Returns all items or items of declared type"""
         res = list()
 
         if item_type is not None and not isinstance(item_type, list):
@@ -276,11 +308,13 @@ class Invoice:
     #----------------------------------------------------------------------------------------------
 
     def get_items_count(self, item_type: str = None) -> int:
+        """Returns sum of all quantities for all items or items of declared type"""
         return sum(item.qty for item in self.get_all_items(item_type=item_type))
 
     #----------------------------------------------------------------------------------------------
 
     def group_by_tax_rate(self, item_type: str = None) -> list:
+        """Returns structure of all items grouped by tax rate or items of declared type"""
         tax_rates = OrderedDict()
 
         for item in self.get_all_items(item_type=item_type):
@@ -308,6 +342,11 @@ class Invoice:
     #----------------------------------------------------------------------------------------------
 
     def serialize(self, item_type: str = None, json_output: bool = False) -> Union[dict, str]:
+        """Serialize object.
+
+        :param json_output: If true, result is string in json format. Otherwise it's a dict.
+        :return: json formatted string or dict.
+        """
         items = self.get_all_items(item_type=item_type)
 
         res = {
