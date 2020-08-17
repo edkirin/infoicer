@@ -11,19 +11,19 @@ def quanitize(value: Decimal, decimal_places: int = 2) -> Decimal:
 #--------------------------------------------------------------------------------------------------
 
 
-def nett_to_brutto(value: Decimal, tax_rate: Decimal):
-    tax_amount = quanitize(value * tax_rate / Decimal(100.0))
-    brutto = value + tax_amount
-    return brutto, tax_amount
+def net_to_gross(value: Decimal, tax_rate: Decimal, decimal_places: int = 2):
+    tax_amount = quanitize(value * tax_rate / Decimal(100.0), decimal_places=decimal_places)
+    gross = value + tax_amount
+    return gross, tax_amount
 
 
 #--------------------------------------------------------------------------------------------------
 
 
-def brutto_to_nett(value: Decimal, tax_rate: Decimal):
-    nett = quanitize(value / (Decimal(1.0) + tax_rate / Decimal(100.0)))
-    tax_amount = value - nett
-    return nett, tax_amount
+def gross_to_net(value: Decimal, tax_rate: Decimal, decimal_places: int = 2):
+    net = quanitize(value / (Decimal(1.0) + tax_rate / Decimal(100.0)), decimal_places=decimal_places)
+    tax_amount = value - net
+    return net, tax_amount
 
 
 #--------------------------------------------------------------------------------------------------

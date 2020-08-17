@@ -30,13 +30,13 @@ class InvoiceItem:
     caption: str = None
     item_type: str = None
     tax_rate: Decimal = None
-    net_amount: Decimal = None  # single product price
-    amount: Decimal = None  # single product price
-    tax_amount: Decimal = None  # single product price
+    net_price: Decimal = None  # single product price
+    price: Decimal = None  # single product price
+    tax_amount: Decimal = ZERO  # single product price
     storno: bool = False
     qty: int = 1
     obj: object = None
-    _decimal_places: int = 2
+    decimal_places: int = 2
 
     #----------------------------------------------------------------------------------------------
 
@@ -45,78 +45,84 @@ class InvoiceItem:
             name: str,
             item_type: str,
             qty: int = 1,
-            net_amount: Union[Decimal, None] = None,
+            net_price: Union[Decimal, None] = None,
             tax_rate: Union[Decimal, None] = ZERO,
-            tax_amount: Union[Decimal, None] = ZERO,
-            amount: Union[Decimal, None] = None,
+            price: Union[Decimal, None] = None,
             storno: bool = False,
+            decimal_places: int = 2,
             obj: object = None,
     ):
         self.name = name
         self.item_type = item_type
         self.qty = qty
         self.tax_rate = tax_rate
-        self.tax_amount = tax_amount
         self.storno = storno
+        self.decimal_places = decimal_places
         self.obj = obj
 
-        if amount is not None:
-            self.set_amount(amount)
-        if net_amount is not None:
-            self.set_net_amount(net_amount)
+        if price is not None:
+            self.set_price(price)
+        if net_price is not None:
+            self.set_net_price(net_price)
 
     #----------------------------------------------------------------------------------------------
 
-    def set_net_amount(self, value: Decimal):
-        self.net_amount = quanitize(value, self._decimal_places)
-        self.amount, self.tax_amount = nett_to_brutto(value, self.tax_rate)
+    def set_net_price(self, value: Decimal):
+        self.net_price = quanitize(value, self.decimal_places)
+        self.price, self.tax_amount = net_to_gross(value, self.tax_rate, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
-    def set_amount(self, value: Decimal):
-        self.amount = quanitize(value, self._decimal_places)
-        self.net_amount, self.tax_amount = brutto_to_nett(value, self.tax_rate)
+    def set_price(self, value: Decimal):
+        self.price = quanitize(value, self.decimal_places)
+        self.net_price, self.tax_amount = gross_to_net(value, self.tax_rate, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def __str__(self):
-        return "[{item_type}] {qty}x {name} {amount} (tax {tax_rate}%: {nett} + {tax})".format(
+        return "[{item_type}] {qty}x {name} {price} (tax {tax_rate}%: {net} + {tax})".format(
             item_type=self.item_type,
             qty=self.qty,
             name=self.name,
-            amount=self.get_amount_sum(),
+            price=self.get_sum(),
             tax_rate=self.tax_rate,
-            nett=self.get_net_amount_sum(),
+            net=self.get_net_sum(),
             tax=self.get_tax_sum(),
         )
 
     #----------------------------------------------------------------------------------------------
 
-    def get_net_amount_sum(self) -> Decimal:
-        return quanitize(self.net_amount * self.qty, decimal_places=self._decimal_places)
+    def get_net_sum(self) -> Decimal:
+        return quanitize(self.net_price * self.qty, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
-    def get_amount_sum(self) -> Decimal:
-        return quanitize(self.amount * self.qty, decimal_places=self._decimal_places)
+    def get_sum(self) -> Decimal:
+        return quanitize(self.price * self.qty, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
     def get_tax_sum(self) -> Decimal:
-        return quanitize(self.tax_amount * self.qty, decimal_places=self._decimal_places)
+        return quanitize(self.tax_amount * self.qty, decimal_places=self.decimal_places)
 
     #----------------------------------------------------------------------------------------------
 
-    def serialize(self) -> dict:
-        return {
+    def serialize(self, json_output: bool = False) -> Union[dict, str]:
+        res = {
             'item_type': self.item_type,
             'qty': self.qty,
             'name': self.name,
-            'amount': self.get_amount_sum(),
+            'price': self.price,
             'tax_rate': self.tax_rate,
-            'nett': self.get_net_amount_sum(),
-            'tax': self.get_tax_sum(),
+            'sum': self.get_sum(),
+            'net_sum': self.get_net_sum(),
+            'tax_sum': self.get_tax_sum(),
         }
+
+        if json_output:
+            res = json.dumps(res, cls=CustomJsonEncoder)
+
+        return res
 
     #----------------------------------------------------------------------------------------------
 
@@ -147,13 +153,13 @@ class InvoiceItemContainer(list):
 
     #----------------------------------------------------------------------------------------------
 
-    def get_net_amount_sum(self):
-        return sum([c.get_net_amount_sum() for c in self])
+    def get_net_sum(self):
+        return sum([c.get_net_sum() for c in self])
 
     #----------------------------------------------------------------------------------------------
 
-    def get_amount_sum(self):
-        return sum([c.get_amount_sum() for c in self])
+    def get_sum(self):
+        return sum([c.get_sum() for c in self])
 
     #----------------------------------------------------------------------------------------------
 
@@ -162,13 +168,13 @@ class InvoiceItemContainer(list):
 
     #----------------------------------------------------------------------------------------------
 
-    def find_item(self, name: str, amount: Decimal, item_type: str = None):
+    def find_item(self, name: str, price: Decimal, item_type: str = None):
         for item in self:
             # take item_type in comparison only if not None
             if (
-                    item.name == name and item.amount == amount and item_type is None
+                    item.name == name and item.price == price and item_type is None
             ) or (
-                    item.name == name and item.amount == amount and item.item_type == item_type
+                    item.name == name and item.price == price and item.item_type == item_type
             ):
                 return item
         return None
@@ -197,8 +203,8 @@ class Invoice:
         res.extend([
             '----------------',
             f"Amount      : {self.get_amount_sum():>10}",
-            f"Net amount  : {self.get_net_amount_sum():>10}",
-            f"Tax amount  : {self.get_tax_sum():>10}",
+            f"Net price  : {self.get_net_amount_sum():>10}",
+            f"Tax price  : {self.get_tax_sum():>10}",
         ])
 
         return '\n'.join(res)
@@ -206,20 +212,18 @@ class Invoice:
     #----------------------------------------------------------------------------------------------
 
     def add(self, item: InvoiceItem):
-        item._decimal_places = self.decimal_places
-
         for container in self.containers:
             if container.tax_rate == item.tax_rate:
                 existing_item = container.find_item(
                     name=item.name,
-                    amount=item.amount,
+                    price=item.price,
                     item_type=item.item_type,
                 )
                 if existing_item is not None:
-                    if existing_item.amount == item.amount:
+                    if existing_item.price == item.price:
                         existing_item.qty += item.qty
                     else:
-                        existing_item.amount += item.amount * item.qty
+                        existing_item.price += item.price * item.qty
                 else:
                     container.append(item)
                 return
@@ -231,12 +235,12 @@ class Invoice:
     #----------------------------------------------------------------------------------------------
 
     def get_amount_sum(self, item_type: str = None) -> Decimal:
-        return sum([c.get_amount_sum() for c in self.get_all_items(item_type=item_type)])
+        return sum([c.get_sum() for c in self.get_all_items(item_type=item_type)])
 
     #----------------------------------------------------------------------------------------------
 
     def get_net_amount_sum(self, item_type: str = None) -> Decimal:
-        return sum([c.get_net_amount_sum() for c in self.get_all_items(item_type=item_type)])
+        return sum([c.get_net_sum() for c in self.get_all_items(item_type=item_type)])
 
     #----------------------------------------------------------------------------------------------
 
@@ -283,8 +287,8 @@ class Invoice:
                 d = {
                     'tax_rate': item.tax_rate,
                     'items': list(),
-                    'amount': ZERO,
-                    'nett': ZERO,
+                    'price': ZERO,
+                    'net': ZERO,
                     'tax': ZERO,
                 }
                 tax_rates.update({
@@ -292,8 +296,8 @@ class Invoice:
                 })
 
             d['items'].append(item.serialize())
-            d['amount'] += item.get_amount_sum()
-            d['nett'] += item.get_net_amount_sum()
+            d['price'] += item.get_sum()
+            d['net'] += item.get_net_sum()
             d['tax'] += item.get_tax_sum()
 
         return list(tax_rates.values())
@@ -301,37 +305,16 @@ class Invoice:
     #----------------------------------------------------------------------------------------------
 
     def serialize(self, item_type: str = None, json_output: bool = False) -> Union[dict, str]:
+        items = self.get_all_items(item_type=item_type)
+
         res = {
-            'tax_rates': OrderedDict(),
+            'items': [item.serialize() for item in items],
             'total': {
-                'amount': 0,
-                'nett': 0,
-                'tax': 0,
+                'sum': sum(item.get_sum() for item in items),
+                'net': sum(item.get_net_sum() for item in items),
+                'tax': sum(item.get_tax_sum() for item in items),
             },
         }
-
-        for item in self.get_all_items(item_type=item_type):
-            if item.tax_rate in res['tax_rates']:
-                d = res['tax_rates'][item.tax_rate]
-            else:
-                d = {
-                    'items': list(),
-                    'amount': 0,
-                    'nett': 0,
-                    'tax': 0,
-                }
-                res['tax_rates'].update({item.tax_rate: d})
-
-            amount = item.get_amount_sum()
-            nett = item.get_net_amount_sum()
-            tax = item.get_tax_sum()
-            d['items'].append(item.serialize())
-            d['amount'] += amount
-            d['nett'] += nett
-            d['tax'] += tax
-            res['total']['amount'] += amount
-            res['total']['nett'] += nett
-            res['total']['tax'] += tax
 
         if json_output:
             res = json.dumps(res, cls=CustomJsonEncoder)
