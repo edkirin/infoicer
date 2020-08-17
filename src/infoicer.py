@@ -36,7 +36,6 @@ class InvoiceItem:
     storno: bool = False
     qty: int = 1
     obj: object = None
-    discount_enabled: bool = False
     _decimal_places: int = 2
 
     #----------------------------------------------------------------------------------------------
@@ -69,13 +68,13 @@ class InvoiceItem:
     #----------------------------------------------------------------------------------------------
 
     def set_net_amount(self, value: Decimal):
-        self.net_amount = value
+        self.net_amount = quanitize(value, self._decimal_places)
         self.amount, self.tax_amount = nett_to_brutto(value, self.tax_rate)
 
     #----------------------------------------------------------------------------------------------
 
     def set_amount(self, value: Decimal):
-        self.amount = value
+        self.amount = quanitize(value, self._decimal_places)
         self.net_amount, self.tax_amount = brutto_to_nett(value, self.tax_rate)
 
     #----------------------------------------------------------------------------------------------
