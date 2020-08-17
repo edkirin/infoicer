@@ -6,12 +6,14 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="infoicer", # Replace with your own username
     version="0.0.1",
+    license='MIT',
     author="Eden Kirin",
     author_email="edkirin@gmail.com",
     description="Infoicer is a simple invoice items handler.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/edkirin/infoicer",
+    keywords=['invoice'],
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
